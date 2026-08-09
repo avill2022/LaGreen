@@ -1,5 +1,7 @@
 # Gestor de Fases de Plantas — Versión Web
 
+<img width="878" height="899" alt="image" src="https://github.com/user-attachments/assets/d2354cd4-0c1d-4ab4-9fcd-c9af8c2d83ea" />
+
 Aplicación web en PHP (sin framework) para gestionar el seguimiento de plantas en germinación y visualizar sus calendarios de crecimiento.
 
 Reimplementa la funcionalidad **Seguimiento** y **Calendario** de la aplicación de escritorio original (Python/customtkinter), usando la misma base de datos SQLite (`plants.db`).
@@ -9,7 +11,8 @@ Reimplementa la funcionalidad **Seguimiento** y **Calendario** de la aplicación
 - **Seguimiento**: registrar plantas que han germinado y monitorizar su fase actual.
   - Fase actual coloreada y barra de progreso.
   - Secuencia de fases (`germinación → plántula → vegetativa → …`) con la fase activa marcada.
-  - Chips de cuidados de la fase activa: luz, agua, pH, temperatura y humedad.
+  - Chips de cuidados de la
+ fase activa: luz, agua, pH, temperatura y humedad.
   - Fecha estimada de cosecha con días restantes.
 - **Calendario**: vista Gantt anual con todas las plantas en seguimiento.
   - Bloques de color por fase de crecimiento y duración.
