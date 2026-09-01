@@ -42,7 +42,8 @@ foreach ($hortalizas as $h) {
             <div class="reel" id="reel">
                 <?php foreach ($thisMonth as $h): ?>
                     <?php $ficha = $h['ficha']; ?>
-                    <article class="reel-card">
+                    <article class="reel-card" data-href="<?= e(hortDetailUrl($h)) ?>" tabindex="0" role="link"
+                             aria-label="Ver ficha de <?= e($h['nombre']) ?>">
                         <?php $foto = $plantImages[normalizeLower((string) ($h['nombre'] ?? ''))] ?? ($h['foto'] ?? ''); ?>
                         <div class="foto">
                             <span class="foto-fallback"><?= e(substr($h['nombre'], 0, 1)) ?></span>
@@ -107,71 +108,7 @@ foreach ($hortalizas as $h) {
                     <?php endforeach; ?>
                 </div>
 
-                <button type="button" class="btn btn-ghost hort-toggle">Ver ficha completa</button>
-
-                <div class="hort-detail">
-                    <div class="ficha-grid">
-                        <div><dt>Meses cosecha</dt><dd><?= e(implode(', ', $ficha['meses_cosecha'] ?? [])) ?></dd></div>
-                        <div><dt>Días a cosecha</dt><dd><?= e($ficha['dias_cosecha'] ?? '') ?></dd></div>
-                        <div><dt>Temp. suelo mín.</dt><dd><?= e($ficha['temperatura_suelo_minima'] ?? '') ?></dd></div>
-                        <div><dt>Temp. óptima</dt><dd><?= e($ficha['temperatura_optima'] ?? '') ?></dd></div>
-                        <div><dt>Fase lunar</dt><dd><?= e($ficha['fase_lunar'] ?? '') ?></dd></div>
-                        <div><dt>Profundidad siembra</dt><dd><?= e($ficha['profundidad_siembra'] ?? '') ?></dd></div>
-                        <div><dt>Marco plantación</dt><dd><?= e($ficha['marco_plantacion'] ?? '') ?></dd></div>
-                        <div><dt>Método siembra</dt><dd><?= e($h['metodo_siembra'] ?? '') ?></dd></div>
-                    </div>
-
-                    <?php if (!empty($ficha['asociaciones_buenas'])): ?>
-                        <h4>Asociaciones favorables</h4>
-                        <div class="chips">
-                            <?php foreach ($ficha['asociaciones_buenas'] as $a): ?>
-                                <span class="chip chip-good"><?= e($a) ?></span>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
-
-                    <?php if (!empty($ficha['asociaciones_malas'])): ?>
-                        <h4>Asociaciones desfavorables</h4>
-                        <div class="chips">
-                            <?php foreach ($ficha['asociaciones_malas'] as $a): ?>
-                                <span class="chip chip-bad"><?= e($a) ?></span>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
-
-                    <?php if (!empty($h['plagas'])): ?>
-                        <h4>Plagas</h4>
-                        <div class="chips">
-                            <?php foreach ($h['plagas'] as $a): ?>
-                                <span class="chip"><?= e($a) ?></span>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
-
-                    <?php if (!empty($h['enfermedades'])): ?>
-                        <h4>Enfermedades</h4>
-                        <div class="chips">
-                            <?php foreach ($h['enfermedades'] as $a): ?>
-                                <span class="chip"><?= e($a) ?></span>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
-
-                    <?php if (!empty($ficha['riego_clave'])): ?>
-                        <h4>Riego</h4>
-                        <p class="ficha-text">💧 <?= e($ficha['riego_clave']) ?></p>
-                    <?php endif; ?>
-
-                    <?php if (!empty($ficha['abono_recomendado'])): ?>
-                        <h4>Abonado</h4>
-                        <p class="ficha-text">🌱 <?= e($ficha['abono_recomendado']) ?></p>
-                    <?php endif; ?>
-
-                    <?php if (!empty($ficha['observaciones'])): ?>
-                        <h4>Observaciones</h4>
-                        <p class="ficha-text">📝 <?= e($ficha['observaciones']) ?></p>
-                    <?php endif; ?>
-                </div>
+                <a class="btn btn-ghost" href="<?= e(hortDetailUrl($h)) ?>">Ver ficha completa</a>
             </article>
         <?php endforeach; ?>
     </div>
@@ -187,15 +124,22 @@ foreach ($hortalizas as $h) {
                     reel.scrollBy({ left: dir * reel.clientWidth * 0.8, behavior: 'smooth' });
                 });
             });
-        }
 
-        document.querySelectorAll('.hort-toggle').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                var card = btn.closest('.hort-consult');
-                var expanded = card.classList.toggle('expanded');
-                btn.textContent = expanded ? 'Ocultar ficha' : 'Ver ficha completa';
+            document.querySelectorAll('.reel-card').forEach(function (card) {
+                var go = function () {
+                    if (card.dataset.href) {
+                        window.location.href = card.dataset.href;
+                    }
+                };
+                card.addEventListener('click', go);
+                card.addEventListener('keydown', function (ev) {
+                    if (ev.key === 'Enter' || ev.key === ' ') {
+                        ev.preventDefault();
+                        go();
+                    }
+                });
             });
-        });
+        }
 
         var search = document.getElementById('hort-search');
         if (search) {

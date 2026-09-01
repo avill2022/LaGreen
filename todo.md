@@ -1,1 +1,1 @@
-- [x] on the cards 'hort-consult-head' the field 'foto' must be the parameter 'image' if exist.
+NOw create a model view controller arquitecture. add the information on data as new category as 'hortalizas'

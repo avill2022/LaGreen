@@ -304,6 +304,15 @@ function plantSlug(string $name): string
     return trim((string) $slug, '-');
 }
 
+function hortDetailUrl(array $h): string
+{
+    $id = (string) ($h['id'] ?? '');
+    if ($id === '') {
+        $id = (string) ($h['nombre'] ?? '');
+    }
+    return 'detail.php?id=' . urlencode($id);
+}
+
 function dificultadClass(?string $dificultad): string
 {
     $d = strtolower(trim((string) $dificultad));

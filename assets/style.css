@@ -423,10 +423,19 @@ input:focus, select:focus {
     border: 1px solid var(--border);
     border-radius: 10px;
     overflow: hidden;
+    cursor: pointer;
 }
 
 .reel-card:hover {
     border-color: var(--accent);
+}
+
+.reel-card:hover .foto img {
+    transform: scale(1.04);
+}
+
+.reel-card .foto img {
+    transition: transform .25s ease;
 }
 
 .reel-body {
@@ -650,6 +659,61 @@ input:focus, select:focus {
     margin: 0;
     font-size: 13px;
     line-height: 1.5;
+}
+
+/* ---------- Página de detalle ---------- */
+
+.detail-back {
+    margin-bottom: 12px;
+}
+
+.detail-back a,
+.detail-back a:visited {
+    color: var(--accent-soft);
+    text-decoration: none;
+    font-size: 13px;
+}
+
+.detail-back a:hover {
+    text-decoration: underline;
+}
+
+.detail-hero {
+    display: flex;
+    align-items: stretch;
+    gap: 16px;
+}
+
+.detail-hero .foto {
+    flex: 0 0 220px;
+    height: 180px;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.detail-hero h2 {
+    margin: 0 0 4px;
+    font-size: 20px;
+}
+
+.detail-hero em {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.detail-hero .familia {
+    margin: 4px 0 8px;
+    color: var(--accent-soft);
+    font-size: 12px;
+}
+
+.detail-hero .badge {
+    display: inline-block;
+    margin: 0 0 12px;
+}
+
+.detail-hero .chips {
+    margin: 0;
 }
 
 /* ---------- Calculadora de crecimiento ---------- */
@@ -988,5 +1052,15 @@ input:focus, select:focus {
 
     .reel-card {
         flex-basis: 220px;
+    }
+
+    .detail-hero {
+        flex-direction: column;
+    }
+
+    .detail-hero .foto {
+        flex: none;
+        width: 100%;
+        height: 180px;
     }
 }
