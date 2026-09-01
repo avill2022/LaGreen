@@ -85,10 +85,13 @@ foreach ($hortalizas as $h) {
             <article class="hort-consult"
                      data-search="<?= e(strtolower($h['nombre'] . ' ' . ($h['nombre_cientifico'] ?? '') . ' ' . ($h['familia'] ?? ''))) ?>">
                 <div class="hort-consult-head">
+                    <?php $foto = $plantImages[normalizeLower((string) ($h['nombre'] ?? ''))] ?? ($h['foto'] ?? ''); ?>
                     <div class="foto foto-small">
                         <span class="foto-fallback"><?= e(substr($h['nombre'], 0, 1)) ?></span>
-                        <img src="<?= e($h['foto'] ?? '') ?>" alt="<?= e($h['nombre']) ?>" loading="lazy"
-                             onerror="this.remove()">
+                        <?php if ($foto !== ''): ?>
+                            <img src="<?= e($foto) ?>" alt="<?= e($h['nombre']) ?>" loading="lazy"
+                                 onerror="this.remove()">
+                        <?php endif; ?>
                     </div>
                     <div>
                         <h3><?= e($h['nombre']) ?></h3>
