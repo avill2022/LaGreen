@@ -1,10 +1,19 @@
 <?php
 /** @var array $hortalizas */
+/** @var array $plants */
 
 $hortalizas = loadHortalizas();
 $currentMonthNum = (int) date('n');
 $currentYear = (int) date('Y');
 $currentMonthName = MONTHS_ES[$currentMonthNum];
+
+$plantImages = [];
+foreach (($plants ?? []) as $p) {
+    $img = (string) ($p['image'] ?? '');
+    if ($img !== '') {
+        $plantImages[normalizeLower((string) $p['name'])] = $img;
+    }
+}
 
 $thisMonth = [];
 foreach ($hortalizas as $h) {
@@ -34,10 +43,13 @@ foreach ($hortalizas as $h) {
                 <?php foreach ($thisMonth as $h): ?>
                     <?php $ficha = $h['ficha']; ?>
                     <article class="reel-card">
+                        <?php $foto = $plantImages[normalizeLower((string) ($h['nombre'] ?? ''))] ?? ($h['foto'] ?? ''); ?>
                         <div class="foto">
                             <span class="foto-fallback"><?= e(substr($h['nombre'], 0, 1)) ?></span>
-                            <img src="<?= e($h['foto'] ?? '') ?>" alt="<?= e($h['nombre']) ?>" loading="lazy"
-                                 onerror="this.remove()">
+                            <?php if ($foto !== ''): ?>
+                                <img src="<?= e($foto) ?>" alt="<?= e($h['nombre']) ?>" loading="lazy"
+                                     onerror="this.remove()">
+                            <?php endif; ?>
                         </div>
                         <div class="reel-body">
                             <div class="reel-head">

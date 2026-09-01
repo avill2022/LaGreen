@@ -1,25 +1,24 @@
-# Lista de plantas (example_plants.json)
-
-1. Albahaca
-2. Cebolla
-3. Espinaca
-4. Frijol
-5. Lechuga
-6. Marihuana
-7. Papa
-8. Pepino
-9. Pimiento
-10. Tomate
-11. Zanahoria
-12. Acelga
-13. Ajo
-14. Berenjena
-15. Brócoli
-16. Calabacín
-17. Col / Repollo
-18. Coliflor
-19. Guisante
-20. Haba
-21. Melón
-22. Puerro
-23. Sandía
+- [x] on the cards '<article class="reel-card">
+                        <div class="foto">
+                            <span class="foto-fallback">L</span>
+                            
+                        </div>
+                        <div class="reel-body">
+                            <div class="reel-head">
+                                <h4>Lechuga</h4>
+                                <span class="badge dif-baja">Baja</span>
+                            </div>
+                            <em class="reel-sci">Lactuca sativa</em>
+                            <div class="chips">
+                                                                    <span class="chip ">Febrero</span>
+                                                                    <span class="chip ">Marzo</span>
+                                                                    <span class="chip ">Abril</span>
+                                                                    <span class="chip ">Agosto</span>
+                                                                    <span class="chip chip-current">Septiembre</span>
+                                                                    <span class="chip ">Octubre</span>
+                                                            </div>
+                            <p class="reel-meta">🌡 15-20°C</p>
+                            <p class="reel-meta">5°C mín. de suelo</p>
+                            <p class="reel-metodo">Directa en tierra o semillero (todo el año según variedad)</p>
+                        </div>
+                    </article>' the field 'foto' must be the parameter 'image' if exist.
