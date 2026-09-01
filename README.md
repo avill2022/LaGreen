@@ -29,6 +29,9 @@ Reimplementa la funcionalidad **Seguimiento** y **Calendario** de la aplicación
 - PHP 8.0+ (probado con PHP 8.5)
 - Extensión `pdo_sqlite` (SQLite para PHP)
 - Permisos de escritura en el directorio del proyecto (para crear/actualizar `plants.db`)
+- Archivos `example_plants.json` y `hortalizas.json` presentes junto a `Database.php` (obligatorio para la carga inicial de plantas)
+
+> ⚠️ **Producción**: si al desplegar el proyecto falta `example_plants.json`, la primera visita **no mostrará ningún error** pero el desplegable de plantas saldrá vacío (la importación inicial se omite silenciosamente). Asegúrate de que ambos `.json` se copien al servidor.
 
 ## Instalación
 
@@ -48,15 +51,15 @@ php -m | grep -i sqlite
 
 Debe mostrar `pdo_sqlite` (y opcionalmente `sqlite3`).
 
-### 2. Navegar al proyecto
+### 2. Situarse en la raíz del proyecto
 
 ```bash
-cd web
+cd /ruta/al/proyecto
 ```
 
 ### 3. Poblar la base de datos (opcional)
 
-La base de datos se crea automáticamente al abrir la aplicación. La primera vez, si no existe ninguna planta, se importan automáticamente los datos de ejemplo de `../example_plants.json` (23 plantas).
+La base de datos se crea automáticamente al abrir la aplicación. La primera vez, si no existe ninguna planta, se importan automáticamente los datos de ejemplo de `example_plants.json` (23 plantas).
 
 Para importar manualmente (CLI):
 
@@ -64,13 +67,21 @@ Para importar manualmente (CLI):
 php seed.php
 ```
 
-> El archivo `plants.db` se crea en la raíz del proyecto (junto a `example_plants.json`), no dentro de `web/`. Es el mismo archivo que usa la versión de escritorio Python.
+### 4. Comprobar el despliegue (diagnóstico)
+
+Ejecuta `check.php` (web o CLI) para verificar extensión SQLite, presencia de los `.json`, permisos de `plants.db` y el número de plantas:
+
+```bash
+php check.php
+```
+
+> El archivo `plants.db` se crea en la raíz del proyecto (junto a `example_plants.json`). Es el mismo archivo que usa la versión de escritorio Python.
 
 ## Ejecución
 
 ### Servidor integrado de PHP (desarrollo)
 
-Desde la carpeta `web`:
+Desde la raíz del proyecto:
 
 ```bash
 php -S localhost:8000
@@ -80,7 +91,9 @@ Abre en el navegador: http://localhost:8000
 
 ### Apache o Nginx (producción)
 
-Apunta el DocumentRoot de tu virtual host a la carpeta `web/`. El index se resuelve automáticamente en `index.php`.
+Apunta el DocumentRoot de tu virtual host a la raíz del proyecto. El index se resuelve automáticamente en `index.php`.
+
+**Requisito de despliegue**: copia también `example_plants.json` y `hortalizas.json` (no solo los `.php`). Si despliegas desde Git, ten en cuenta que `plants.db` está en `.gitignore` y no se transfiere; se crea y rellena solo en la primera visita, siempre que `example_plants.json` esté presente y el directorio sea escribible por el usuario del servidor web.
 
 ## Uso
 
@@ -96,12 +109,16 @@ La primera vez, regístrate con **Registrarse** en la cabecera. Después usa **I
 ## Estructura del proyecto
 
 ```
-web/
+/
 ├── index.php               # Página principal (pestañas, sesión y controladores)
 ├── config.php              # Configuración (rutas y constantes)
 ├── Database.php            # Capa de datos con PDO/SQLite (plantas, fases y usuarios)
 ├── functions.php           # Lógica de fases, cosecha, colores y helpers CSRF
 ├── seed.php                # Importador CLI de example_plants.json
+├── check.php               # Diagnóstico de despliegue (eliminar o restringir en producción)
+├── example_plants.json     # Datos de ejemplo (obligatorio para la carga inicial)
+├── hortalizas.json         # Ficha de cultivo adicional (obligatorio)
+├── plants.db               # Base SQLite creada automáticamente (no está en Git)
 ├── views/
 │   ├── login.php           # Vista de inicio de sesión
 │   ├── register.php        # Vista de registro
@@ -124,6 +141,6 @@ Para restablecer los datos de ejemplo:
 ```bash
 # 1. Detén el servidor web
 # 2. Elimina la base de datos (perderás los datos propios)
-rm ../plants.db
+rm plants.db
 # 3. Vuelve a iniciar y la app reimportará example_plants.json automáticamente
 ```

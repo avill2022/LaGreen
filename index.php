@@ -29,11 +29,16 @@ $success = '';
 
 secureSession();
 
-if ($db->countPlants() === 0 && file_exists(SEED_FILE)) {
-    try {
-        $db->importFromJson(SEED_FILE);
-    } catch (Throwable $e) {
-        $error = 'No se pudieron cargar los datos iniciales: ' . $e->getMessage();
+if ($db->countPlants() === 0) {
+    if (file_exists(SEED_FILE)) {
+        try {
+            $db->importFromJson(SEED_FILE);
+        } catch (Throwable $e) {
+            $error = 'No se pudieron cargar los datos iniciales: ' . $e->getMessage();
+        }
+    } else {
+        error_log('[LaGreen] ' . SEED_FILE . ' no existe y la tabla plants está vacía. Copie example_plants.json junto a Database.php o ejecute php seed.php.');
+        $error = 'No hay plantas en la base de datos y falta el archivo de datos iniciales (' . SEED_FILE . '). Copie example_plants.json junto a Database.php o ejecute php seed.php.';
     }
 }
 
