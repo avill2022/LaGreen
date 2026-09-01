@@ -58,6 +58,12 @@
         ?>
             <article class="card">
                 <div class="card-header">
+                    <div class="foto foto-small">
+                        <span class="foto-fallback"><?= e(substr($plant['name'], 0, 1)) ?></span>
+                        <?php if (($plant['image'] ?? '') !== ''): ?>
+                            <img src="<?= e($plant['image']) ?>" alt="<?= e($plant['name']) ?>" loading="lazy" onerror="this.remove()">
+                        <?php endif; ?>
+                    </div>
                     <div class="card-title">
                         <strong><?= e($gp['name']) ?></strong>
                         <span class="card-subtitle">(<?= e($plant['name']) ?>)</span>

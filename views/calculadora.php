@@ -79,8 +79,7 @@ if ($plantId > 0) {
     $familia = $horta['familia'] ?? '';
     $dificultad = $horta['dificultad'] ?? '';
     $foto = $horta['foto'] ?? '';
-    $slug = preg_replace('/[^a-z0-9]+/', '-', strtolower($plantSel['name']));
-    $slug = trim($slug, '-');
+    $slug = plantSlug($plantSel['name']);
     ?>
 
     <section class="panel calc-guide" id="calc-export">

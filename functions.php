@@ -298,6 +298,12 @@ function e(?string $value): string
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 }
 
+function plantSlug(string $name): string
+{
+    $slug = preg_replace('/[^a-z0-9]+/', '-', strtolower(trim($name)));
+    return trim((string) $slug, '-');
+}
+
 function dificultadClass(?string $dificultad): string
 {
     $d = strtolower(trim((string) $dificultad));
@@ -327,7 +333,56 @@ function verifyCsrf(): bool
     return $sent !== '' && isset($_SESSION['csrf']) && hash_equals($_SESSION['csrf'], $sent);
 }
 
-function currentUser(): ?array
+function secureSession(): void
 {
-    return $_SESSION['user'] ?? null;
+    if (session_status() !== PHP_SESSION_NONE) {
+        return;
+    }
+    session_name('LAGREEN_SESSID');
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'httponly' => true,
+        'samesite' => 'Lax',
+        'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+    ]);
+    session_start();
+}
+
+/**
+ * Rate limiting para login/registro. Devuelve true si la petición está bloqueada.
+ */
+function loginBlocked(): bool
+{
+    $g = $_SESSION['login_guard'] ?? null;
+    if ($g === null) {
+        return false;
+    }
+    return $g['blocked_until'] > time();
+}
+
+function registerLoginFailure(): void
+{
+    $now = time();
+    $g = $_SESSION['login_guard'] ?? ['count' => 0, 'window_start' => $now, 'blocked_until' => 0];
+    if ($now - $g['window_start'] >= 900) {
+        $g = ['count' => 0, 'window_start' => $now, 'blocked_until' => 0];
+    }
+    $g['count']++;
+    if ($g['count'] >= 5) {
+        $g['blocked_until'] = $now + 300;
+        $g['count'] = 0;
+        $g['window_start'] = $now;
+    }
+    $_SESSION['login_guard'] = $g;
+}
+
+function resetLoginRateLimit(): void
+{
+    unset($_SESSION['login_guard']);
+}
+
+function validTab(string $tab): bool
+{
+    return in_array($tab, ['seguimiento', 'calendario', 'siembra', 'calculadora', 'login', 'registro'], true);
 }

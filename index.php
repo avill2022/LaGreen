@@ -8,6 +8,7 @@ require_once __DIR__ . '/functions.php';
 try {
     $db = new Database();
 } catch (Throwable $e) {
+    error_log('[LaGreen] Fatal: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
     http_response_code(500);
     echo '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'
         . '<title>' . e(APP_NAME) . '</title>'
@@ -26,9 +27,7 @@ try {
 $error = '';
 $success = '';
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+secureSession();
 
 if ($db->countPlants() === 0 && file_exists(SEED_FILE)) {
     try {
@@ -56,9 +55,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $regEmail = trim((string) ($_POST['email'] ?? ''));
         $regPass = (string) ($_POST['password'] ?? '');
         $regPass2 = (string) ($_POST['password_confirm'] ?? '');
+        $regRedirect = validTab((string) ($_POST['redirect'] ?? '')) ? (string) $_POST['redirect'] : 'seguimiento';
 
         if (!verifyCsrf()) {
             $error = 'La sesión expiró. Vuelva a intentarlo.';
+        } elseif (loginBlocked()) {
+            $error = 'Demasiados intentos. Espere unos minutos y vuelva a intentarlo.';
         } elseif ($regName === '') {
             $error = 'El nombre es obligatorio.';
         } elseif (!filter_var($regEmail, FILTER_VALIDATE_EMAIL)) {
@@ -72,26 +74,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $userId = $db->registerUser($regName, $regEmail, password_hash($regPass, PASSWORD_DEFAULT));
             session_regenerate_id(true);
+            resetLoginRateLimit();
             $_SESSION['user_id'] = $userId;
             $user = $db->getUserById($userId);
             $success = 'Cuenta creada. ¡Bienvenido!';
-            $redirect = (string) ($_POST['redirect'] ?? 'seguimiento');
+            $redirect = $regRedirect;
         }
     } elseif ($action === 'login') {
         $logEmail = trim((string) ($_POST['email'] ?? ''));
         $logPass = (string) ($_POST['password'] ?? '');
+        $logRedirect = validTab((string) ($_POST['redirect'] ?? '')) ? (string) $_POST['redirect'] : 'seguimiento';
         $found = $db->getUserByEmail($logEmail);
 
         if (!verifyCsrf()) {
             $error = 'La sesión expiró. Vuelva a intentarlo.';
+        } elseif (loginBlocked()) {
+            $error = 'Demasiados intentos. Espere unos minutos y vuelva a intentarlo.';
         } elseif (!$found || !password_verify($logPass, $found['password_hash'])) {
+            registerLoginFailure();
             $error = 'Correo o contraseña incorrectos.';
         } else {
             session_regenerate_id(true);
+            resetLoginRateLimit();
             $_SESSION['user_id'] = (int) $found['id'];
             $user = $found;
             $success = 'Sesión iniciada.';
-            $redirect = (string) ($_POST['redirect'] ?? 'seguimiento');
+            $redirect = $logRedirect;
         }
     } elseif ($action === 'logout') {
         if (!verifyCsrf()) {
@@ -122,13 +130,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($name === '') {
                     $name = $plant['name'];
                 }
-                $db->addGerminationPlant($plantId, $name, $date, $notes);
+                $db->addGerminationPlant($plantId, (int) $user['id'], $name, $date, $notes);
                 $success = 'Planta añadida al seguimiento.';
                 $redirect = $tab;
             }
         } else {
-            $db->deleteGerminationPlant((int) ($_POST['id'] ?? 0));
-            $success = 'Planta eliminada del seguimiento.';
+            $deleted = $db->deleteGerminationPlant((int) ($_POST['id'] ?? 0), (int) $user['id']);
+            $success = $deleted ? 'Planta eliminada del seguimiento.' : 'No se pudo eliminar la planta.';
             $redirect = $tab;
         }
     }
@@ -157,7 +165,7 @@ if (in_array($activeTab, ['seguimiento', 'calendario'], true)) {
 }
 
 $plants = $db->getPlants();
-$gps = $db->getGerminationPlants();
+$gps = $user ? $db->getGerminationPlants((int) $user['id']) : [];
 $todayStr = date('Y-m-d');
 
 $submitted = [

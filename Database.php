@@ -21,6 +21,62 @@ final class Database
         $this->pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
         $this->pdo->exec('PRAGMA foreign_keys = ON');
         $this->createTables();
+        $this->migrate();
+        $this->createIndexes();
+        $this->backfillPlantImages();
+    }
+
+    private function backfillPlantImages(): void
+    {
+        $byName = [];
+        if (file_exists(SEED_FILE)) {
+            $seed = json_decode((string) file_get_contents(SEED_FILE), true);
+            if (is_array($seed)) {
+                foreach ($seed as $item) {
+                    $byName[(string) ($item['name'] ?? '')] = (string) ($item['image'] ?? '');
+                }
+            }
+        }
+
+        $rows = $this->pdo->query("SELECT id, name, image FROM plants WHERE image = '' OR image IS NULL")->fetchAll();
+        $upd = $this->pdo->prepare('UPDATE plants SET image = ? WHERE id = ?');
+        foreach ($rows as $row) {
+            $name = (string) $row['name'];
+            $image = $byName[$name] ?? ('https://avillsoftware.com/img/lagreen/' . self::slug($name) . '.png');
+            if ($image !== '') {
+                $upd->execute([$image, (int) $row['id']]);
+            }
+        }
+    }
+
+    private static function slug(string $name): string
+    {
+        $slug = preg_replace('/[^a-z0-9]+/', '-', strtolower(trim($name)));
+        return trim((string) $slug, '-');
+    }
+
+    private function migrate(): void
+    {
+        $this->addColumnIfMissing('germination_plants', 'user_id', 'INTEGER REFERENCES users(id) ON DELETE CASCADE');
+        $this->addColumnIfMissing('plants', 'image', "TEXT DEFAULT ''");
+    }
+
+    private function addColumnIfMissing(string $table, string $column, string $definition): void
+    {
+        $columns = $this->pdo->query("PRAGMA table_info($table)")->fetchAll();
+        foreach ($columns as $col) {
+            if ($col['name'] === $column) {
+                return;
+            }
+        }
+        $this->pdo->exec("ALTER TABLE $table ADD COLUMN $column $definition");
+    }
+
+    private function createIndexes(): void
+    {
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_gp_user ON germination_plants(user_id)');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_phases_plant ON plant_phases(plant_id)');
+        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)');
     }
 
     private function createTables(): void
@@ -37,7 +93,8 @@ final class Database
                 tiempo_cosechar INTEGER,
                 clima_templado INTEGER DEFAULT 0,
                 clima_frio INTEGER DEFAULT 0,
-                fase_cosechar TEXT DEFAULT ''
+                fase_cosechar TEXT DEFAULT '',
+                image TEXT DEFAULT ''
             );
 
             CREATE TABLE IF NOT EXISTS plant_phases (
@@ -65,10 +122,12 @@ final class Database
             CREATE TABLE IF NOT EXISTS germination_plants (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 plant_id INTEGER NOT NULL,
+                user_id INTEGER,
                 name TEXT NOT NULL DEFAULT '',
                 germination_date TEXT NOT NULL,
                 notes TEXT DEFAULT '',
-                FOREIGN KEY (plant_id) REFERENCES plants(id)
+                FOREIGN KEY (plant_id) REFERENCES plants(id),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             );
 
             CREATE TABLE IF NOT EXISTS users (
@@ -84,10 +143,28 @@ final class Database
     public function getPlants(): array
     {
         $rows = $this->pdo->query('SELECT * FROM plants ORDER BY name')->fetchAll();
-        foreach ($rows as &$row) {
-            $row['phases'] = $this->getPhases((int) $row['id']);
-        }
+        $this->attachPhases($rows);
         return $rows;
+    }
+
+    private function attachPhases(array &$rows): void
+    {
+        if (!$rows) {
+            return;
+        }
+        $ids = array_map('intval', array_column($rows, 'id'));
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $this->pdo->prepare(
+            "SELECT * FROM plant_phases WHERE plant_id IN ($placeholders) ORDER BY phase_order"
+        );
+        $stmt->execute($ids);
+        $byPlant = [];
+        foreach ($stmt->fetchAll() as $ph) {
+            $byPlant[(int) $ph['plant_id']][] = $ph;
+        }
+        foreach ($rows as &$row) {
+            $row['phases'] = $byPlant[(int) $row['id']] ?? [];
+        }
     }
 
     public function getPlant(int $plantId): ?array
@@ -111,28 +188,35 @@ final class Database
         return $stmt->fetchAll();
     }
 
-    public function getGerminationPlants(): array
+    public function getGerminationPlants(?int $userId = null): array
     {
-        return $this->pdo->query(
+        if ($userId === null) {
+            return [];
+        }
+        $stmt = $this->pdo->prepare(
             "SELECT g.*, p.name AS plant_name
              FROM germination_plants g
              JOIN plants p ON p.id = g.plant_id
+             WHERE g.user_id = ?
              ORDER BY g.germination_date"
-        )->fetchAll();
+        );
+        $stmt->execute([$userId]);
+        return $stmt->fetchAll();
     }
 
-    public function addGerminationPlant(int $plantId, string $name, string $germinationDate, string $notes = ''): void
+    public function addGerminationPlant(int $plantId, int $userId, string $name, string $germinationDate, string $notes = ''): void
     {
         $stmt = $this->pdo->prepare(
-            'INSERT INTO germination_plants (plant_id, name, germination_date, notes) VALUES (?, ?, ?, ?)'
+            'INSERT INTO germination_plants (plant_id, user_id, name, germination_date, notes) VALUES (?, ?, ?, ?, ?)'
         );
-        $stmt->execute([$plantId, $name, $germinationDate, $notes]);
+        $stmt->execute([$plantId, $userId, $name, $germinationDate, $notes]);
     }
 
-    public function deleteGerminationPlant(int $gpId): void
+    public function deleteGerminationPlant(int $gpId, int $userId): bool
     {
-        $stmt = $this->pdo->prepare('DELETE FROM germination_plants WHERE id = ?');
-        $stmt->execute([$gpId]);
+        $stmt = $this->pdo->prepare('DELETE FROM germination_plants WHERE id = ? AND user_id = ?');
+        $stmt->execute([$gpId, $userId]);
+        return $stmt->rowCount() > 0;
     }
 
     public function countPlants(): int
@@ -151,8 +235,8 @@ final class Database
         $insPlant = $this->pdo->prepare(
             'INSERT INTO plants (name, plant_group, month_plant_min, month_plant_max,
                  siembra_semillero, siembra_directa, tiempo_cosechar,
-                 clima_templado, clima_frio, fase_cosechar)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                 clima_templado, clima_frio, fase_cosechar, image)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $insPhase = $this->pdo->prepare(
             'INSERT INTO plant_phases (plant_id, name, phase_order,
@@ -163,7 +247,9 @@ final class Database
         );
 
         $count = 0;
-        foreach ($data as $item) {
+        $this->pdo->beginTransaction();
+        try {
+            foreach ($data as $item) {
             $exists->execute([$item['name'] ?? '']);
             if ($exists->fetch()) {
                 continue;
@@ -180,6 +266,7 @@ final class Database
                 (int) !empty($item['clima_templado']),
                 (int) !empty($item['clima_frio']),
                 $item['fase_cosechar'] ?? '',
+                $item['image'] ?? '',
             ]);
             $plantId = (int) $this->pdo->lastInsertId();
 
@@ -205,6 +292,13 @@ final class Database
                 ]);
             }
             $count++;
+            }
+            $this->pdo->commit();
+        } catch (Throwable $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $e;
         }
         return $count;
     }

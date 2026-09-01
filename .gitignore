@@ -1,0 +1,13 @@
+# Runtime data (outside repo, but keep safe if ever added here)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Runtime logs
+error_log
+*.log
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
