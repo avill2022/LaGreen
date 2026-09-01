@@ -2,7 +2,11 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/config.php';
+namespace App\Models;
+
+use PDO;
+
+require_once __DIR__ . '/../../config.php';
 
 final class Database
 {

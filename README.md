@@ -29,9 +29,9 @@ Reimplementa la funcionalidad **Seguimiento** y **Calendario** de la aplicación
 - PHP 8.0+ (probado con PHP 8.5)
 - Extensión `pdo_sqlite` (SQLite para PHP)
 - Permisos de escritura en el directorio del proyecto (para crear/actualizar `plants.db`)
-- Archivos `example_plants.json` y `hortalizas.json` presentes junto a `Database.php` (obligatorio para la carga inicial de plantas)
+- Archivos `example_plants.json` y `data/hortalizas.json` presentes (obligatorio para la carga inicial y el calendario de siembra)
 
-> ⚠️ **Producción**: si al desplegar el proyecto falta `example_plants.json`, la primera visita **no mostrará ningún error** pero el desplegable de plantas saldrá vacío (la importación inicial se omite silenciosamente). Asegúrate de que ambos `.json` se copien al servidor.
+> ⚠️ **Producción**: si al desplegar el proyecto falta `example_plants.json`, la primera visita **no mostrará ningún error** pero el desplegable de plantas saldrá vacío (la importación inicial se omite silenciosamente). Asegúrate de que `example_plants.json` y la carpeta `data/` se copien al servidor.
 
 ## Instalación
 
@@ -93,7 +93,7 @@ Abre en el navegador: http://localhost:8000
 
 Apunta el DocumentRoot de tu virtual host a la raíz del proyecto. El index se resuelve automáticamente en `index.php`.
 
-**Requisito de despliegue**: copia también `example_plants.json` y `hortalizas.json` (no solo los `.php`). Si despliegas desde Git, ten en cuenta que `plants.db` está en `.gitignore` y no se transfiere; se crea y rellena solo en la primera visita, siempre que `example_plants.json` esté presente y el directorio sea escribible por el usuario del servidor web.
+**Requisito de despliegue**: copia también `example_plants.json` y la carpeta `data/` (no solo los `.php`). Si despliegas desde Git, ten en cuenta que `plants.db` está en `.gitignore` y no se transfiere; se crea y rellena solo en la primera visita, siempre que `example_plants.json` esté presente y el directorio sea escribible por el usuario del servidor web.
 
 ## Uso
 
@@ -110,22 +110,39 @@ La primera vez, regístrate con **Registrarse** en la cabecera. Después usa **I
 
 ```
 /
-├── index.php               # Página principal (pestañas, sesión y controladores)
-├── config.php              # Configuración (rutas y constantes)
-├── Database.php            # Capa de datos con PDO/SQLite (plantas, fases y usuarios)
+├── index.php               # Front controller (router MVC, arranque, sesión y enrutado por ?tab=)
+├── config.php              # Configuración (rutas y constantes) + autoloader de App\
 ├── functions.php           # Lógica de fases, cosecha, colores y helpers CSRF
+├── app/                    # Núcleo MVC
+│   ├── Core/
+│   │   ├── Controller.php  # Controlador base (render, layout y helpers)
+│   │   └── Router.php      # Mapea cada pestaña a su controlador
+│   ├── Controllers/
+│   │   ├── AuthController.php        # login / registro / logout
+│   │   ├── SeguimientoController.php # seguimiento (listar, añadir, eliminar)
+│   │   ├── CalendarioController.php  # calendario Gantt
+│   │   ├── SiembraController.php     # calendario de siembra
+│   │   ├── CalculadoraController.php # calculadora de crecimiento
+│   │   └── DetalleController.php     # ficha de cultivo (?tab=detalle&id=…)
+│   └── Models/
+│       ├── Database.php    # Capa de datos PDO/SQLite (plantas, fases y usuarios)
+│       └── Catalog.php     # Catálogo por categorías desde data/*.json
 ├── seed.php                # Importador CLI de example_plants.json
 ├── check.php               # Diagnóstico de despliegue (eliminar o restringir en producción)
 ├── example_plants.json     # Datos de ejemplo (obligatorio para la carga inicial)
-├── hortalizas.json         # Ficha de cultivo adicional (obligatorio)
+├── data/                   # Catálogos por categoría (obligatorio)
+│   ├── hortalizas.json     # Ficha de cultivo de hortalizas (categoría 'hortalizas')
+│   └── cactus.json, cotton.json, example_fruts.json, flowers.json
 ├── plants.db               # Base SQLite creada automáticamente (no está en Git)
-├── views/
+├── views/                  # Plantillas MV (solo reciben datos preparados)
+│   ├── layout.php          # Layout compartido (cabecera, navegación y pie)
 │   ├── login.php           # Vista de inicio de sesión
 │   ├── register.php        # Vista de registro
 │   ├── seguimiento.php     # Vista de seguimiento
 │   ├── calendario.php      # Vista de calendario (Gantt)
 │   ├── siembra.php         # Vista de calendario de siembra
-│   └── calculadora.php     # Vista de calculadora de crecimiento
+│   ├── calculadora.php     # Vista de calculadora de crecimiento
+│   └── detalle.php         # Vista de ficha de cultivo
 └── assets/
     ├── style.css           # Estilos
     └── vendor/
@@ -135,6 +152,10 @@ La primera vez, regístrate con **Registrarse** en la cabecera. Después usa **I
 ## Datos
 
 Los datos se almacenan en una base SQLite local (`plants.db`) creada automáticamente en la raíz del proyecto. Es el mismo esquema y archivo que usa la versión de escritorio, por lo que ambas aplicaciones comparten los datos.
+
+El catálogo de siembra se organiza por categorías en `data/*.json`. Cada archivo es una categoría (por ejemplo el archivo `data/hortalizas.json` contiene el catálogo `hortalizas`). El modelo `Catalog` los lee de forma uniforme, tanto en formato envuelto (`{"hortalizas": [...]}`) como en lista pura.
+
+Cada tarjeta del calendario de siembra y el botón **Ver ficha completa** enlazan a la ficha de la planta en `index.php?tab=detalle&id=HOR-001`.
 
 Para restablecer los datos de ejemplo:
 

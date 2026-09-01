@@ -1,30 +1,10 @@
 <?php
 /** @var array $hortalizas */
-/** @var array $plants */
-
-$hortalizas = loadHortalizas();
-$currentMonthNum = (int) date('n');
-$currentYear = (int) date('Y');
-$currentMonthName = MONTHS_ES[$currentMonthNum];
-
-$plantImages = [];
-foreach (($plants ?? []) as $p) {
-    $img = (string) ($p['image'] ?? '');
-    if ($img !== '') {
-        $plantImages[normalizeLower((string) $p['name'])] = $img;
-    }
-}
-
-$thisMonth = [];
-foreach ($hortalizas as $h) {
-    foreach ($h['ficha']['meses_siembra'] ?? [] as $m) {
-        if (monthNumber($m) === $currentMonthNum) {
-            $thisMonth[] = $h;
-            break;
-        }
-    }
-}
-
+/** @var array $plantImages */
+/** @var int $currentMonthNum */
+/** @var int $currentYear */
+/** @var string $currentMonthName */
+/** @var array $thisMonth */
 ?>
 
 <section class="panel">
@@ -32,7 +12,7 @@ foreach ($hortalizas as $h) {
     <p class="panel-sub">¿Qué sembrar? Estos son los cultivos recomendados para <strong><?= e($currentMonthName) ?></strong>.</p>
 
     <?php if (!$hortalizas): ?>
-        <p class="empty">No se encontró el archivo <code>hortalizas.json</code>.</p>
+        <p class="empty">No se encontró el archivo <code>data/hortalizas.json</code>.</p>
     <?php elseif (!$thisMonth): ?>
         <p class="empty">No hay cultivos programados para <?= e($currentMonthName) ?>.</p>
     <?php else: ?>

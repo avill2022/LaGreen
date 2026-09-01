@@ -2,8 +2,14 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/Database.php';
+require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/functions.php';
+
+use App\Core\Router;
+use App\Controllers\AuthController;
+use App\Controllers\SeguimientoController;
+use App\Models\Catalog;
+use App\Models\Database;
 
 try {
     $db = new Database();
@@ -24,9 +30,6 @@ try {
     exit;
 }
 
-$error = '';
-$success = '';
-
 secureSession();
 
 if ($db->countPlants() === 0) {
@@ -34,11 +37,10 @@ if ($db->countPlants() === 0) {
         try {
             $db->importFromJson(SEED_FILE);
         } catch (Throwable $e) {
-            $error = 'No se pudieron cargar los datos iniciales: ' . $e->getMessage();
+            error_log('[LaGreen] Import inicial fallido: ' . $e->getMessage());
         }
     } else {
-        error_log('[LaGreen] ' . SEED_FILE . ' no existe y la tabla plants está vacía. Copie example_plants.json junto a Database.php o ejecute php seed.php.');
-        $error = 'No hay plantas en la base de datos y falta el archivo de datos iniciales (' . SEED_FILE . '). Copie example_plants.json junto a Database.php o ejecute php seed.php.';
+        error_log('[LaGreen] ' . SEED_FILE . ' no existe y la tabla plants está vacía. Copie example_plants.json junto a config.php o ejecute php seed.php.');
     }
 }
 
@@ -50,110 +52,7 @@ if (!empty($_SESSION['user_id'])) {
     }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = $_POST['action'] ?? '';
-    $tab = $_POST['tab'] ?? 'seguimiento';
-    $redirect = null;
-
-    if ($action === 'register') {
-        $regName = trim((string) ($_POST['name'] ?? ''));
-        $regEmail = trim((string) ($_POST['email'] ?? ''));
-        $regPass = (string) ($_POST['password'] ?? '');
-        $regPass2 = (string) ($_POST['password_confirm'] ?? '');
-        $regRedirect = validTab((string) ($_POST['redirect'] ?? '')) ? (string) $_POST['redirect'] : 'seguimiento';
-
-        if (!verifyCsrf()) {
-            $error = 'La sesión expiró. Vuelva a intentarlo.';
-        } elseif (loginBlocked()) {
-            $error = 'Demasiados intentos. Espere unos minutos y vuelva a intentarlo.';
-        } elseif ($regName === '') {
-            $error = 'El nombre es obligatorio.';
-        } elseif (!filter_var($regEmail, FILTER_VALIDATE_EMAIL)) {
-            $error = 'Ingrese un correo electrónico válido.';
-        } elseif (strlen($regPass) < 6) {
-            $error = 'La contraseña debe tener al menos 6 caracteres.';
-        } elseif ($regPass !== $regPass2) {
-            $error = 'Las contraseñas no coinciden.';
-        } elseif ($db->getUserByEmail($regEmail) !== null) {
-            $error = 'Ya existe una cuenta con ese correo.';
-        } else {
-            $userId = $db->registerUser($regName, $regEmail, password_hash($regPass, PASSWORD_DEFAULT));
-            session_regenerate_id(true);
-            resetLoginRateLimit();
-            $_SESSION['user_id'] = $userId;
-            $user = $db->getUserById($userId);
-            $success = 'Cuenta creada. ¡Bienvenido!';
-            $redirect = $regRedirect;
-        }
-    } elseif ($action === 'login') {
-        $logEmail = trim((string) ($_POST['email'] ?? ''));
-        $logPass = (string) ($_POST['password'] ?? '');
-        $logRedirect = validTab((string) ($_POST['redirect'] ?? '')) ? (string) $_POST['redirect'] : 'seguimiento';
-        $found = $db->getUserByEmail($logEmail);
-
-        if (!verifyCsrf()) {
-            $error = 'La sesión expiró. Vuelva a intentarlo.';
-        } elseif (loginBlocked()) {
-            $error = 'Demasiados intentos. Espere unos minutos y vuelva a intentarlo.';
-        } elseif (!$found || !password_verify($logPass, $found['password_hash'])) {
-            registerLoginFailure();
-            $error = 'Correo o contraseña incorrectos.';
-        } else {
-            session_regenerate_id(true);
-            resetLoginRateLimit();
-            $_SESSION['user_id'] = (int) $found['id'];
-            $user = $found;
-            $success = 'Sesión iniciada.';
-            $redirect = $logRedirect;
-        }
-    } elseif ($action === 'logout') {
-        if (!verifyCsrf()) {
-            $error = 'La sesión expiró. Vuelva a intentarlo.';
-        } else {
-            session_unset();
-            session_destroy();
-            header('Location: ' . strtok($_SERVER['REQUEST_URI'], '?') . '?tab=siembra');
-            exit;
-        }
-    } elseif ($action === 'add' || $action === 'delete') {
-        if (!$user) {
-            $error = 'Debe iniciar sesión para gestionar el seguimiento.';
-        } elseif (!verifyCsrf()) {
-            $error = 'La sesión expiró. Vuelva a intentarlo.';
-        } elseif ($action === 'add') {
-            $plantId = (int) ($_POST['plant_id'] ?? 0);
-            $name = trim((string) ($_POST['name'] ?? ''));
-            $date = trim((string) ($_POST['germination_date'] ?? ''));
-            $notes = trim((string) ($_POST['notes'] ?? ''));
-            $plant = $plantId > 0 ? $db->getPlant($plantId) : null;
-
-            if (!$plant) {
-                $error = 'Seleccione un tipo de planta.';
-            } elseif (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
-                $error = 'Ingrese una fecha válida (YYYY-MM-DD).';
-            } else {
-                if ($name === '') {
-                    $name = $plant['name'];
-                }
-                $db->addGerminationPlant($plantId, (int) $user['id'], $name, $date, $notes);
-                $success = 'Planta añadida al seguimiento.';
-                $redirect = $tab;
-            }
-        } else {
-            $deleted = $db->deleteGerminationPlant((int) ($_POST['id'] ?? 0), (int) $user['id']);
-            $success = $deleted ? 'Planta eliminada del seguimiento.' : 'No se pudo eliminar la planta.';
-            $redirect = $tab;
-        }
-    }
-
-    if ($error === '' && $redirect !== null) {
-        $query = '?tab=' . urlencode($redirect);
-        header('Location: ' . strtok($_SERVER['REQUEST_URI'], '?') . $query);
-        exit;
-    }
-}
-
-$allowedTabs = ['seguimiento', 'calendario', 'siembra', 'calculadora', 'login', 'registro'];
+$allowedTabs = ['seguimiento', 'calendario', 'siembra', 'calculadora', 'detalle', 'login', 'registro'];
 $activeTab = $_GET['tab'] ?? ($user ? 'seguimiento' : 'siembra');
 if (!in_array($activeTab, $allowedTabs, true)) {
     $activeTab = $user ? 'seguimiento' : 'siembra';
@@ -169,74 +68,35 @@ if (in_array($activeTab, ['seguimiento', 'calendario'], true)) {
     $activeTab = 'seguimiento';
 }
 
-$plants = $db->getPlants();
-$gps = $user ? $db->getGerminationPlants((int) $user['id']) : [];
-$todayStr = date('Y-m-d');
+$catalog = new Catalog();
+$router = new Router();
 
-$submitted = [
-    'plant_id' => (int) ($_POST['plant_id'] ?? 0),
-    'name' => trim((string) ($_POST['name'] ?? '')),
-    'germination_date' => trim((string) ($_POST['germination_date'] ?? '')) ?: $todayStr,
-    'notes' => trim((string) ($_POST['notes'] ?? '')),
-];
-?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= e(APP_NAME) ?></title>
-    <link rel="stylesheet" href="assets/style.css">
-</head>
-<body>
-<header class="app-header">
-    <h1><?= e(APP_NAME) ?></h1>
-    <nav class="tabs">
-        <a href="?tab=seguimiento" class="<?= $activeTab === 'seguimiento' ? 'active' : '' ?>">Seguimiento</a>
-        <a href="?tab=calendario" class="<?= $activeTab === 'calendario' ? 'active' : '' ?>">Calendario</a>
-        <a href="?tab=siembra" class="<?= $activeTab === 'siembra' ? 'active' : '' ?>">Calendario de siembra</a>
-        <a href="?tab=calculadora" class="<?= $activeTab === 'calculadora' ? 'active' : '' ?>">Calculadora de crecimiento</a>
-    </nav>
-    <div class="user-area">
-        <?php if ($user): ?>
-            <span class="user-chip">👤 <?= e($user['name']) ?></span>
-            <form method="post" class="inline-form">
-                <?= csrfField() ?>
-                <input type="hidden" name="action" value="logout">
-                <button type="submit" class="btn btn-ghost btn-sm">Cerrar sesión</button>
-            </form>
-        <?php else: ?>
-            <a href="?tab=login" class="btn btn-ghost btn-sm">Iniciar sesión</a>
-            <a href="?tab=registro" class="btn btn-primary btn-sm">Registrarse</a>
-        <?php endif; ?>
-    </div>
-</header>
+$class = null;
+$action = trim((string) ($_POST['action'] ?? ''));
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (in_array($action, ['login', 'register', 'logout'], true)) {
+        $class = AuthController::class;
+    } elseif (in_array($action, ['add', 'delete'], true)) {
+        $class = SeguimientoController::class;
+    }
+}
+if ($class === null) {
+    $class = $router->controllerFor($activeTab);
+}
 
-<main>
-    <?php if ($error !== ''): ?>
-        <div class="alert alert-error"><?= e($error) ?></div>
-    <?php endif; ?>
-    <?php if ($success !== ''): ?>
-        <div class="alert alert-success"><?= e($success) ?></div>
-    <?php endif; ?>
+if ($class === null) {
+    http_response_code(404);
+    echo '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'
+        . '<title>404</title><style>body{background:#1b1b1b;color:#e8e8e8;font-family:sans-serif;'
+        . 'display:flex;justify-content:center;align-items:center;min-height:100vh}'
+        . 'a{color:#4CAF50}</style></head><body><h1>Página no encontrada · <a href="index.php">Volver</a></h1></body></html>';
+    exit;
+}
 
-    <?php if ($activeTab === 'login'): ?>
-        <?php include __DIR__ . '/views/login.php'; ?>
-    <?php elseif ($activeTab === 'registro'): ?>
-        <?php include __DIR__ . '/views/register.php'; ?>
-    <?php elseif ($activeTab === 'seguimiento'): ?>
-        <?php include __DIR__ . '/views/seguimiento.php'; ?>
-    <?php elseif ($activeTab === 'calendario'): ?>
-        <?php include __DIR__ . '/views/calendario.php'; ?>
-    <?php elseif ($activeTab === 'calculadora'): ?>
-        <?php include __DIR__ . '/views/calculadora.php'; ?>
-    <?php else: ?>
-        <?php include __DIR__ . '/views/siembra.php'; ?>
-    <?php endif; ?>
-</main>
+/** @var \App\Core\Controller $controller */
+$controller = new $class($db, $catalog, $user);
+if ($controller instanceof AuthController) {
+    $controller->setLoginRedirect($loginRedirect);
+}
 
-<footer class="app-footer">
-    <span>Datos almacenados localmente en <code>plants.db</code> (SQLite).</span>
-</footer>
-</body>
-</html>
+$controller->handle();

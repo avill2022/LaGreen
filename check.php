@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/Database.php';
+require_once __DIR__ . '/config.php';
+
+use App\Models\Database;
 
 header('Content-Type: text/plain; charset=UTF-8');
 
@@ -19,12 +21,11 @@ line('pdo_sqlite cargada: ' . (extension_loaded('pdo_sqlite') ? 'sí' : 'NO'));
 line('sqlite3 cargada: ' . (extension_loaded('sqlite3') ? 'sí' : 'NO'));
 
 echo "\nArchivos de datos\n";
-require_once __DIR__ . '/config.php';
-$horta = __DIR__ . '/hortalizas.json';
+$horta = __DIR__ . '/data/hortalizas.json';
 line('SEED_FILE: ' . SEED_FILE);
 line('  existe: ' . (file_exists(SEED_FILE) ? 'sí' : 'NO'));
 line('  legible: ' . (is_readable(SEED_FILE) ? 'sí' : 'NO'));
-line('hortalizas.json: ' . $horta . '  existe: ' . (file_exists($horta) ? 'sí' : 'NO'));
+line('data/hortalizas.json: ' . $horta . '  existe: ' . (file_exists($horta) ? 'sí' : 'NO'));
 
 echo "\nBase de datos\n";
 line('DB_PATH: ' . DB_PATH);

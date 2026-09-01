@@ -1,1 +1,0 @@
-NOw create a model view controller arquitecture. add the information on data as new category as 'hortalizas'

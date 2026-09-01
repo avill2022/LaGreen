@@ -1,31 +1,11 @@
 <?php
-/** @var Database $db */
-/** @var array $gps */
+/** @var array $plantData */
 ?>
 
 <section class="panel">
     <h2>Calendario Anual de Fases</h2>
 
-    <?php
-    $plantData = [];
-    foreach ($gps as $gp) {
-        $germ = parseDate($gp['germination_date']);
-        if (!$germ) {
-            continue;
-        }
-        $plant = $db->getPlant((int) $gp['plant_id']);
-        if (!$plant) {
-            continue;
-        }
-        $plantData[] = [
-            'gp' => $gp,
-            'plant' => $plant,
-            'germ' => $germ,
-            'total' => phaseTotalDays($plant),
-        ];
-    }
-
-    if (!$plantData): ?>
+    <?php if (!$plantData): ?>
         <p class="empty">No hay plantas en germinación.<br>Añada plantas en la pestaña 'Seguimiento'.</p>
     <?php else:
         $px = MIN_PX_PER_DAY;

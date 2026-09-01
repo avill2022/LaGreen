@@ -1,7 +1,6 @@
 <?php
-/** @var Database $db */
 /** @var array $plants */
-/** @var array $gps */
+/** @var array $tracked */
 /** @var string $error */
 /** @var array $submitted */
 ?>
@@ -44,17 +43,18 @@
 <section class="panel">
     <h2>Plantas en Seguimiento</h2>
 
-    <?php if (!$gps): ?>
+    <?php if (!$tracked): ?>
         <p class="empty">No hay plantas en germinación.</p>
     <?php else: ?>
-        <?php foreach ($gps as $gp):
-            $plant = $db->getPlant((int) $gp['plant_id']);
-            if (!$plant) {
-                continue;
-            }
-            [$phaseIdx, $phaseName, $progress, $currentPhase] = currentPhase($plant, $gp['germination_date']);
-            $statusColor = $phaseName !== '' ? '#4CAF50' : '#FF9800';
-            $phaseStatus = $phaseName !== '' ? 'Fase actual: ' . $phaseName : 'Completada';
+        <?php foreach ($tracked as $row):
+            $gp = $row['gp'];
+            $plant = $row['plant'];
+            $phaseIdx = $row['phaseIdx'];
+            $phaseName = $row['phaseName'];
+            $progress = $row['progress'];
+            $currentPhase = $row['currentPhase'];
+            $statusColor = $row['statusColor'];
+            $phaseStatus = $row['phaseStatus'];
         ?>
             <article class="card">
                 <div class="card-header">

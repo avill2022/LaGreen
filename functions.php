@@ -25,21 +25,6 @@ const MONTHS_ES = [
     7 => 'Julio', 8 => 'Agosto', 9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre',
 ];
 
-function loadHortalizas(): array
-{
-    static $cache = null;
-    if ($cache !== null) {
-        return $cache;
-    }
-    $file = __DIR__ . '/hortalizas.json';
-    if (!file_exists($file)) {
-        return [];
-    }
-    $data = json_decode((string) file_get_contents($file), true);
-    $cache = $data['hortalizas'] ?? [];
-    return $cache;
-}
-
 function monthNumber(?string $name): ?int
 {
     if ($name === null || trim($name) === '') {
@@ -60,15 +45,19 @@ function normalizeLower(?string $value): string
     return strtr($value, ['á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ñ' => 'n', 'ü' => 'u']);
 }
 
-function findHortalizaByName(string $name): ?array
+function plantSlug(string $name): string
 {
-    $target = normalizeLower($name);
-    foreach (loadHortalizas() as $h) {
-        if (normalizeLower($h['nombre'] ?? '') === $target) {
-            return $h;
-        }
+    $slug = preg_replace('/[^a-z0-9]+/', '-', strtolower(trim($name)));
+    return trim((string) $slug, '-');
+}
+
+function hortDetailUrl(array $h): string
+{
+    $id = (string) ($h['id'] ?? '');
+    if ($id === '') {
+        $id = (string) ($h['nombre'] ?? '');
     }
-    return null;
+    return 'index.php?tab=detalle&id=' . urlencode($id);
 }
 
 /**
@@ -296,21 +285,6 @@ function hasValue(array $phase, string $key): bool
 function e(?string $value): string
 {
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
-}
-
-function plantSlug(string $name): string
-{
-    $slug = preg_replace('/[^a-z0-9]+/', '-', strtolower(trim($name)));
-    return trim((string) $slug, '-');
-}
-
-function hortDetailUrl(array $h): string
-{
-    $id = (string) ($h['id'] ?? '');
-    if ($id === '') {
-        $id = (string) ($h['nombre'] ?? '');
-    }
-    return 'detail.php?id=' . urlencode($id);
 }
 
 function dificultadClass(?string $dificultad): string

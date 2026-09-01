@@ -1,27 +1,12 @@
 <?php
-/** @var Database $db */
 /** @var array $plants */
-/** @var string $error */
-/** @var string $success */
-
-$plantId = (int) ($_GET['plant_id'] ?? 0);
-$calcDate = trim((string) ($_GET['date'] ?? '')) ?: date('Y-m-d');
-
-$plantSel = null;
-$result = null;
-$calcError = '';
-
-if ($plantId > 0) {
-    $plantSel = $db->getPlant($plantId);
-    if (!$plantSel) {
-        $calcError = 'Planta no encontrada.';
-    } elseif (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $calcDate)) {
-        $calcError = 'Ingrese una fecha válida (YYYY-MM-DD).';
-    } else {
-        $result = plantPhaseSchedule($plantSel, $calcDate);
-        $horta = findHortalizaByName($plantSel['name']);
-    }
-}
+/** @var int $plantId */
+/** @var string $calcDate */
+/** @var ?array $plantSel */
+/** @var ?array $result */
+/** @var ?array $horta */
+/** @var string $calcError */
+/** @var string $slug */
 ?>
 
 <section class="panel">
@@ -79,7 +64,6 @@ if ($plantId > 0) {
     $familia = $horta['familia'] ?? '';
     $dificultad = $horta['dificultad'] ?? '';
     $foto = $horta['foto'] ?? '';
-    $slug = plantSlug($plantSel['name']);
     ?>
 
     <section class="panel calc-guide" id="calc-export">
